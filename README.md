@@ -9,7 +9,7 @@ IIT Delhi
 | 2 | Yash Balram Sakhare | 2022CH71496 |
 | 3 | Rishita Anand | 2022CH71042 |
 
-**GitHub repository:** https://github.com/CLL770-IITD/lbm-tjunction-droplet
+**GitHub repository:** https://github.com/rishitaanandiitd/lbm-tjunction-droplet
 
 > Note: if this link does not resolve yet, the repository has not been
 > pushed from the authors' machine — the complete, self-contained code

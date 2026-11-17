@@ -24,7 +24,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 FIG = os.path.join(ROOT, "results", "figures")
 DAT = os.path.join(ROOT, "results", "data")
 OUT = os.path.join(ROOT, "output", "CLL770_Final_Report_and_Slides.pdf")
-GITHUB = "https://github.com/CLL770-IITD/lbm-tjunction-droplet"
+GITHUB = "https://github.com/rishitaanandiitd/lbm-tjunction-droplet"
 
 NAVY = colors.HexColor("#1b2a4a")
 BLUE = colors.HexColor("#1b4f9c")
