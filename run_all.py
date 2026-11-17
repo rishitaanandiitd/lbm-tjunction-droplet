@@ -304,6 +304,31 @@ def hero(sigma):
     return pinch, Ca
 
 
+def pinch_sequence(sigma):
+    """Zoomed waist-collapse sequence for the reference case (Fig. 6)."""
+    print("== Pinch sequence ==", flush=True)
+    t = TJunction(nu_c=NU_REF)
+    want = {20000, 22000, 23500, 24500, 25500, 27000}
+    snaps = {}
+    out = None
+    for chunk in range(54):
+        out = t.run(uc_mean=0.003, q_ratio=0.5, steps=500)
+        step = (chunk + 1) * 500
+        if step in want:
+            snaps[step] = out["phi"].copy()
+    fig, axes = plt.subplots(2, 3, figsize=(13, 6))
+    for ax, (k, v) in zip(axes.ravel(), sorted(snaps.items())):
+        disp = np.ma.masked_where(t.solid, v)
+        ax.imshow(disp[:, 90:280], origin="lower", cmap="RdBu", vmin=-1,
+                  vmax=1, extent=[90, 280, 0, t.ny])
+        ax.contour(v[:, 90:280], levels=[0], colors="k", linewidths=0.7,
+                   extent=[90, 280, 0, t.ny])
+        ax.set_title(f"step {k}"); ax.set_xlabel("x [lu]")
+    fig.suptitle("Waist formation and droplet detachment (reference case, zoomed)")
+    fig.tight_layout()
+    fig.savefig(os.path.join(FIG, "fig_pinch_sequence.png")); plt.close(fig)
+
+
 def sweep(sigma):
     print("== Sweeps ==", flush=True)
     rows = []
@@ -405,6 +430,7 @@ def main():
     pinch, Ca = hero(sigma)
     with open(os.path.join(DAT, "summary.txt"), "a") as fh:
         fh.write(f"hero_Ca {Ca}\nhero_pinch {pinch}\n")
+    pinch_sequence(sigma)
     rows = sweep(sigma)
     regime_figure(sigma, rows)
     print(f"ALL DONE in {time.time() - t0:.0f}s")
