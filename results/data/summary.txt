@@ -1,0 +1,6 @@
+sigma_measured 0.011886801429751433
+sigma_theory 0.01414213562373095
+laplace_R2 0.9998192158667079
+poiseuille_rel_rms_percent 2.707003456005753
+hero_Ca 0.012619038089133512
+hero_pinch {'step': 24500, 'length': 41, 'area': 410, 'xmin': 189, 'xmax': 229, 'xcent': 212.26829268292684}
