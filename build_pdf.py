@@ -1,30 +1,38 @@
 """
 Build the combined submission PDF:
 
-    Part I   Final project report   (A4 portrait)
-    Part II  Presentation slides    (16:9 landscape, GitHub link on title)
+    Part I   Final project report   (A4 portrait, ReportLab)
+    Part II  Presentation slides    (16:9, from build_slides.py; GitHub link on title)
 
     python3 build_pdf.py
     -> output/CLL770_Final_Report_and_Slides.pdf
+       output/CLL770_Presentation.pptx / .pdf   (the deck on its own)
 """
 
 import csv
 import os
 
+import fitz
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY, TA_LEFT
-from reportlab.lib.pagesizes import A4, landscape
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.lib.units import cm, inch
+from reportlab.lib.units import cm
 from reportlab.platypus import (BaseDocTemplate, Frame, Image, PageBreak,
-                                PageTemplate, Paragraph, NextPageTemplate,
-                                Spacer, Table, TableStyle, KeepTogether)
+                                PageTemplate, Paragraph, Spacer, Table, TableStyle)
+
+import build_slides
+from project_meta import GITHUB, TITLE, TEAM
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 FIG = os.path.join(ROOT, "results", "figures")
 DAT = os.path.join(ROOT, "results", "data")
 OUT = os.path.join(ROOT, "output", "CLL770_Final_Report_and_Slides.pdf")
-GITHUB = "https://github.com/rishitaanandiitd/lbm-tjunction-droplet"
+REPORT = os.path.join(ROOT, "output", "CLL770_Report.pdf")
+
+ALPHA = build_slides.ALPHA
+TH_PROD = build_slides.TH_PROD
+N_SLIDES = len(build_slides.SLIDES)
 
 NAVY = colors.HexColor("#1b2a4a")
 BLUE = colors.HexColor("#1b4f9c")
@@ -85,15 +93,6 @@ st_cap = S("cap", fontSize=8.5, leading=11, textColor=GREY, alignment=TA_CENTER,
            spaceBefore=3, spaceAfter=10)
 st_cell = S("cell", fontSize=8.5, leading=10.5, alignment=TA_CENTER)
 st_cellL = S("cellL", parent=st_cell, alignment=TA_LEFT)
-st_slide_title = S("st", fontSize=26, leading=31, textColor=colors.white,
-                   fontName="Helvetica-Bold")
-st_slide_h = S("sh", fontSize=20, leading=24, textColor=NAVY,
-               fontName="Helvetica-Bold", spaceAfter=8)
-st_slide_b = S("sb", fontSize=13.5, leading=19, spaceAfter=6)
-st_slide_bul = S("sbul", parent=st_slide_b, leftIndent=18, bulletIndent=6,
-                 spaceAfter=5)
-st_slide_cap = S("scap", fontSize=10, leading=13, textColor=GREY,
-                 alignment=TA_CENTER, spaceBefore=4)
 
 def P(text, style=st_body, bulletText=None):
     if bulletText:
@@ -141,27 +140,6 @@ def report_footer(canvas, doc):
     canvas.line(1.6 * cm, 1.45 * cm, A4[0] - 1.6 * cm, 1.45 * cm)
     canvas.restoreState()
 
-SLIDE_W, SLIDE_H = 13.33 * inch, 7.5 * inch
-
-def slide_bg(canvas, doc):
-    canvas.saveState()
-    canvas.setFillColor(colors.white)
-    canvas.rect(0, 0, SLIDE_W, SLIDE_H, stroke=0, fill=1)
-    canvas.setFillColor(NAVY)
-    canvas.rect(0, SLIDE_H - 0.95 * inch, SLIDE_W, 0.95 * inch, stroke=0, fill=1)
-    canvas.setFillColor(GREY); canvas.setFont("Helvetica", 8)
-    canvas.drawString(0.55 * inch, 0.32 * inch,
-                      "CLL 770 · IIT Delhi · LBM droplet formation in a T-junction")
-    canvas.drawRightString(SLIDE_W - 0.55 * inch, 0.32 * inch, f"{doc.page}")
-    canvas.restoreState()
-
-def slide_title_bg(canvas, doc):
-    canvas.saveState()
-    canvas.setFillColor(NAVY); canvas.rect(0, 0, SLIDE_W, SLIDE_H, stroke=0, fill=1)
-    canvas.setFillColor(BLUE)
-    canvas.rect(0, SLIDE_H - 1.5 * inch, SLIDE_W, 0.28 * inch, stroke=0, fill=1)
-    canvas.restoreState()
-
 # ============================================================ REPORT part ==
 story = []
 
@@ -170,12 +148,10 @@ story += [Spacer(1, 2.2 * cm),
           P("Indian Institute of Technology Delhi", S("iit", parent=st_title, fontSize=15, textColor=BLUE)),
           P("CLL 770 — Introduction to Microfluidics and Fabrication", S("c", parent=st_body, alignment=TA_CENTER, fontSize=12, textColor=GREY)),
           Spacer(1, 1.2 * cm),
-          P("Lattice Boltzmann Simulation of Droplet Formation in a Microfluidic T-Junction", st_title),
+          P(TITLE, st_title),
           P("Squeezing-to-Dripping Transition and Droplet-Size Scaling", S("sub", parent=st_title, fontSize=14, textColor=BLUE)),
           Spacer(1, 1.0 * cm)]
-team_rows = [["1", "Ananyaa Agrawal", "2022CH71487"],
-             ["2", "Yash Balram Sakhare", "2022CH71496"],
-             ["3", "Rishita Anand", "2022CH71042"]]
+team_rows = [[str(i), name, entry] for i, (name, entry) in enumerate(TEAM, 1)]
 story += [data_table(["S. No.", "Name", "Entry Number"], team_rows,
                      widths=[1.6 * cm, 6.5 * cm, 4.5 * cm]),
           Spacer(1, 1.2 * cm),
@@ -215,7 +191,7 @@ story += [P("Abstract", st_h1),
             "explicitly and their effect on absolute droplet sizes is discussed.", st_body),
           P("Contents — Part I: 1 Introduction · 2 Theory · 3 Numerical method · 4 Validation · "
             "5 Results · 6 Discussion · 7 Conclusions · References · Appendix A (code &amp; "
-            "reproducibility). Part II: presentation slides (15).", st_body)]
+            f"reproducibility). Part II: presentation slides ({N_SLIDES}).", st_body)]
 
 # --- 1 intro ---
 story += [P("1 &nbsp; Introduction", st_h1),
@@ -472,7 +448,7 @@ story += [P("5.2 &nbsp; Effect of capillary number", st_h2),
             "window (thread). Two conclusions follow. First, droplet lengths are of order the "
             "channel width (L/w<sub>c</sub> = 1.4\u20131.7) and scatter around the Garstecki form "
             "L/w<sub>c</sub> = 1 + \u03b1Q<sub>r</sub>: a fit with the intercept fixed at 1 (as the "
-            "theory requires) gives \u03b1 = 0.81, close to the \u03b1 = 1 reference line in "
+            f"theory requires) gives \u03b1 = {ALPHA:.2f}, below the \u03b1 = 1 reference line in "
             "Figure 8b \u2014 i.e. our droplets obey the Garstecki <i>form</i> with an order-unity "
             "prefactor. Second, with only three pinched points spanning a factor 1.25 in "
             "L/w<sub>c</sub>, we do <i>not</i> claim a verified linear scaling law: in this "
@@ -488,7 +464,7 @@ story += [P("5.2 &nbsp; Effect of capillary number", st_h2),
             "the window. \u03bb therefore controls the <i>rate</i> of waist/neck drainage in this "
             "window \u2014 a viscous dispersed phase resists being squeezed \u2014 while the detached "
             "length stays O(w<sub>c</sub>). Wettability: only the base, strongly "
-            "continuous-wetting wall (w = \u22120.6, \u03b8 \u2248 140\u00b0) detaches within the window; at "
+            f"continuous-wetting wall (w = \u22120.6, \u03b8 \u2248 {TH_PROD:.0f}\u00b0) detaches within the window; at "
             "w = \u22120.2 and +0.2 no detachment occurs within 26 000 steps. In this setup a "
             "lubricating continuous-phase film is what allows the waist to close and the "
             "droplet to release; reducing that wetting preference makes the dispersed phase "
@@ -502,7 +478,7 @@ story += [P("6 &nbsp; Discussion", st_h1),
           P("<b>Comparison with the literature.</b> Qualitatively, every element of the "
             "reference picture is reproduced: filling and elongation followed by waist detachment at the low-Ca end, a transition "
             "to thread behaviour as Ca rises, droplet lengths of order w<sub>c</sub> consistent "
-            "with the Garstecki form (\u03b1 \u2248 0.8), and faster break-up for less viscous dispersed "
+            f"with the Garstecki form (\u03b1 \u2248 {ALPHA:.2f}), and faster break-up for less viscous dispersed "
             "phases. Quantitatively "
             "the transition Ca is geometry-dependent (Liu &amp; Zhang's 0.018 is for "
             "w<sub>d</sub> ≈ w<sub>c</sub> and their λ and contact angle; ours, with "
@@ -557,7 +533,7 @@ for b in [
     "its upstream-pressure signature — and its loss to thread behaviour as Ca (or "
     "excessively, Q<sub>r</sub>) is raised.",
     "In the droplet window, droplet lengths are O(w<sub>c</sub>) (L/w<sub>c</sub> = 1.4–1.7) and "
-    "consistent with the Garstecki form L/w<sub>c</sub> = 1 + αQ<sub>r</sub> with α ≈ 0.8; "
+    f"consistent with the Garstecki form L/w<sub>c</sub> = 1 + αQ<sub>r</sub> with α ≈ {ALPHA:.2f}; "
     "λ and wettability act mainly through waist/neck drainage and wall films.",
     "For device design: choose geometry (w<sub>d</sub>/w<sub>c</sub>) and surface "
     "treatment first (they set the regime), then use Q<sub>r</sub> as the in-use "
@@ -580,15 +556,17 @@ story += [P("References", st_h1),
             "[5] CLL 770 course notes, Units 2–7 (interfacial phenomena; low-Re pressure-driven "
             "flow; two-phase flow; PDMS soft lithography; droplet microfluidics).", st_body),
           P("Appendix A — Code, data and reproducibility", st_h1),
-          P(f"GitHub repository: <link href='{GITHUB}' color='#1b4f9c'>{GITHUB}</link> "
-            "(if the remote has not yet been pushed from the authors' machine, this folder is "
-            "the complete repository — <font face='Courier'>git log</font> shows its history).", st_body),
+          P(f"GitHub repository: <link href='{GITHUB}' color='#1b4f9c'>{GITHUB}</link>", st_body),
           P("<font face='Courier'>lbm_tjunction/solver.py</font> — the solver (D2Q9 kernels, "
             "phase field, boundaries, <font face='Courier'>TJunction.run()</font>). "
             "<font face='Courier'>run_all.py</font> — regenerates every number, figure and CSV "
             "in this report (<font face='Courier'>python3 run_all.py</font>, ~10 min). "
-            "<font face='Courier'>build_pdf.py</font> — builds this combined PDF from those "
-            "outputs, so no number in the text is typed by hand from a figure. Generated data: "
+            "<font face='Courier'>make_slide_figures.py</font> — presentation-styled figures "
+            "for the slides (~1 min). <font face='Courier'>build_slides.py</font> — builds the "
+            "editable slide deck (PowerPoint, with speaker notes) and its PDF. "
+            "<font face='Courier'>build_pdf.py</font> — builds this report and merges it with "
+            "the slides into the combined PDF; every number in the text and on the slides is "
+            "read from the generated data, not typed by hand from a figure. Generated data: "
             "<font face='Courier'>results/data/{laplace,poiseuille,contact_angle,hero_growth,"
             "hero_pressure,sweep}.csv</font>, <font face='Courier'>hero_snaps.npz</font>; "
             "figures in <font face='Courier'>results/figures/</font>. Droplet detection: "
@@ -599,189 +577,42 @@ story += [P("References", st_h1),
             "parameter sweeps, analysis and writing were carried out jointly by the three "
             "authors; all authors reviewed the final report and slides.", st_body)]
 
-# ============================================================ SLIDES part ==
-story += [NextPageTemplate("slides_title"), PageBreak()]
-
-def slide(title, body_items, bg="normal"):
-    items = []
-    if bg == "title":
-        items += [Spacer(1, 1.1 * inch), P(title, st_slide_title)]
-    else:
-        items += [Spacer(1, 0.05 * inch),
-                  P(title, S("sh2", parent=st_slide_h, textColor=NAVY))]
-    items += body_items
-    return items
-
-def bullets(*texts):
-    return [P(t, st_slide_bul, bulletText="•") for t in texts]
-
-def slide_fig(name, width_in, caption=None):
-    path = os.path.join(FIG, name)
-    items = []
-    if os.path.exists(path):
-        from PIL import Image as PILImage
-        iw, ih = PILImage.open(path).size
-        w = width_in * inch
-        items.append(Image(path, width=w, height=w * ih / iw))
-    if caption:
-        items.append(P(caption, st_slide_cap))
-    return items
-
-# S1 title
-story += slide("Lattice Boltzmann Simulation of Droplet Formation in a Microfluidic T-Junction", [
-    P("Squeezing-to-Dripping Transition and Droplet-Size Scaling", S("ss", parent=st_slide_b, textColor=colors.HexColor("#bcd2f0"), fontSize=16)),
-    Spacer(1, 0.45 * inch),
-    P("CLL 770 — Introduction to Microfluidics and Fabrication · Term Project · IIT Delhi", S("s2", parent=st_slide_b, textColor=colors.white)),
-    P("Ananyaa Agrawal (2022CH71487) · Yash Balram Sakhare (2022CH71496) · Rishita Anand (2022CH71042)",
-      S("s3", parent=st_slide_b, textColor=colors.white)),
-    Spacer(1, 0.5 * inch),
-    P(f"<b>GitHub repository:</b> <link href='{GITHUB}' color='#8ec3ff'>{GITHUB}</link>",
-      S("s4", parent=st_slide_b, textColor=colors.white, fontSize=15, borderColor=colors.white)),
-    P("Full report precedes these slides in this same PDF (Part I).", S("s5", parent=st_slide_b, textColor=colors.HexColor("#bcd2f0"))),
-], bg="title")
-story += [NextPageTemplate("slides"), PageBreak()]
-
-# S2 outline
-story += slide("Outline", bullets(
-    "Why droplets, why a T-junction?",
-    "Physics: Ca, Q<sub>d</sub>/Q<sub>c</sub>, λ, contact angle — squeezing vs dripping",
-    "Our solver: D2Q9 LBM + Cahn–Hilliard phase field (from scratch, Numba)",
-    "Validation: Laplace · Poiseuille · contact angle",
-    "Results: one break-up, pressure signature, regime map, Garstecki scaling",
-    "What it means for a PDMS device · limitations · conclusions",
-))
-story += [PageBreak()]
-
-# S3 background
-story += slide("Why droplets? Why a T-junction?", bullets(
-    "Each droplet = a picolitre reactor → ddPCR, single-cell encapsulation, monodisperse particles",
-    "T-junction: dispersed phase from a side channel is chopped by a cross-flowing continuous phase",
-    "Design questions: <b>which regime?</b> and <b>how big are the droplets?</b>",
-    "Hard analytically: free interface + moving contact lines + thin films interact",
-    "→ Write a validated two-phase solver and map the operating space (after Liu &amp; Zhang 2009; Garstecki <i>et al.</i> 2006)",
-))
-story += [PageBreak()]
-
-# S4 physics
-story += slide("The physics in three groups (+ one angle)", bullets(
-    "<b>Ca = μ<sub>c</sub>U<sub>c</sub>/σ</b> — shear vs interfacial tension",
-    "<b>Q<sub>r</sub> = Q<sub>d</sub>/Q<sub>c</sub></b> — how much dispersed phase per cycle",
-    "<b>λ = μ<sub>d</sub>/μ<sub>c</sub></b> — neck drainage; <b>θ</b> — wall films / blockage",
-    "<b>Squeezing (low Ca):</b> droplet blocks channel → upstream pressure squeezes neck → break-up",
-    "<b>Dripping / jetting (high Ca):</b> shear draws a thread; droplets smaller, less regular",
-    "Squeezing droplet size: <b>L/w<sub>c</sub> = 1 + α·Q<sub>r</sub></b> (Garstecki) — we test this",
-))
-story += [PageBreak()]
-
-# S5 method
-story += slide("Solver: LBM hydrodynamics + phase-field interface", bullets(
-    "D2Q9 BGK lattice Boltzmann, Guo forcing → low-Re Navier–Stokes; bounce-back walls",
-    "Cahn–Hilliard φ (+1 dispersed / −1 continuous); surface tension <b>F = μ∇φ</b>",
-    "D2Q9-isotropic derivatives (low spurious currents) + upwind φ advection, Numba kernels",
-    "Wetting: ∂φ/∂n = w(1−φ²) at walls · syringe-pump inlets (parabolic, free pressure) · Q<sub>c</sub>+Q<sub>d</sub> outlet",
-    "Everything scripted: <font face='Courier'>python3 run_all.py</font> regenerates every figure/number",
-))
-story += slide_fig("fig_geometry.png", 9.2, "T-junction: w<sub>c</sub>=30 lu, w<sub>d</sub>=16 lu, 400×90 lu domain")
-story += [PageBreak()]
-
-# S6 validation 1
-story += slide("Validation 1a — surface tension is right (Laplace)", [])
-story += slide_fig("fig_laplace.png", 9.6,
-                   f"Δp = σ/R is linear (R²={LAP_R2:.4f}); slope σ = {SIGMA:.4f} lu — this measured σ is used for every Ca in the study. "
-                   "Static-droplet spurious velocities are at most 2x10-4 lu/step.")
-story += [PageBreak()]
-
-# S6b validation 1b
-story += slide("Validation 1b — the flow solver is right (Poiseuille)", [])
-story += slide_fig("fig_poiseuille.png", 6.8,
-                   f"Single-phase profile in the main channel vs the analytical parabola: {POIS_ERR:.2f}% RMS error. "
-                   "This validates BGK hydrodynamics + bounce-back + inlet forcing, independently of the interface.")
-story += [PageBreak()]
-
-# S7 validation 2
-story += slide("Validation 2 — contact angle is controllable", [])
-story += slide_fig("fig_contact.png", 8.4,
-                   "Sessile droplet: wetting parameter w → measured θ ≈ 49–149° (monotonic). "
-                   "Production runs: w = −0.6 (continuous phase wets the walls, droplets lubricated, as in PDMS devices)")
-story += [PageBreak()]
-
-# S8 hero
-story += slide("Result 1 — anatomy of a break-up", [])
-story += slide_fig("fig_hero_sequence.png", 10.0,
-                   f"Filling (bulb) → elongation (slug) → waist formation → droplet detachment (see report Fig. 6 for the zoom). "
-                   f"Reference case Ca≈{fmt(ca_hero,3) if ca_hero else '0.012'}, Q<sub>r</sub>=0.5, λ=1")
-story += [PageBreak()]
-
-# S9 pressure
-story += slide("Result 2 — the pressure signature of squeezing", [])
-story += slide_fig("fig_pressure.png", 8.6,
-                   "Upstream pressure rises while the droplet constricts the channel and relaxes at break-up — "
-                   "break-up is driven by blockage pressure (Garstecki mechanism), not by shear alone")
-story += bullets("This trace is also a diagnostic an experimentalist can measure with an upstream pressure sensor")
-story += [PageBreak()]
-
-# S10 Ca
-story += slide("Result 3 — capillary number moves the regime", bullets(
-    "Ca = 0.013–0.021: filling + elongation, droplet detachment (L/w<sub>c</sub> = 1.4–1.6)",
-    "Ca ≥ 0.034: interface swept downstream before it can detach → continuous thread",
-    "Ca = 0.008 needs &gt; 36 000 steps (period ∝ 1/U) — censored by the 26 000-step window, not a separate regime",
-    "Our pinch-to-thread boundary (Ca between 0.021 and 0.034) is within a factor of two of Liu &amp; Zhang's 0.018 — as expected for a geometry-dependent boundary",
-))
-story += [PageBreak()]
-
-# S11 scaling
-story += slide("Result 4 — droplet size &amp; regime map", [])
-story += slide_fig("fig_sweeps.png", 12.2,
-                   "(a) L/w<sub>c</sub> vs Ca · (b) Garstecki plot L/w<sub>c</sub> = 1 + αQ<sub>r</sub> at fixed Ca · "
-                   "(c) Regime map: droplet window is bounded in (Ca, Q<sub>r</sub>) — choose operating points jointly")
-story += [PageBreak()]
-
-# S12 lambda/wetting
-story += slide("Result 5 — viscosity ratio &amp; wettability", bullets(
-    "<b>λ ↑:</b> waist drains slowly → λ = 5 does not detach in the window (λ = 0.2 detaches earliest, step 15 500)",
-    "<b>λ controls the drainage stage,</b> not filling — detached length stays O(w<sub>c</sub>)",
-    "<b>Wettability:</b> only the strongly continuous-wetting wall (w = −0.6) released droplets in the window — the lubricating film enables release",
-    "<b>Fabrication link:</b> plasma treatment / hydrophobic recovery of PDMS sets exactly this knob — surface treatment is a droplet-size variable, not an afterthought",
-))
-story += [PageBreak()]
-
-# S13 limitations
-story += slide("Limitations — stated, not hidden", bullets(
-    "2-D: real droplets leave corner gutters in a rectangular section → absolute volumes / exact transition Ca shift; trends &amp; scaling survive",
-    "Diffuse interface (~3–4 lu) + Cahn–Hilliard mobility: very long threads slowly lose φ downstream → lengths measured at first detachment near the junction; “no pinch” = within the 26 000-step window",
-    "Matched densities, moderate λ (BGK stability); negligible inertia at these Re regardless",
-    "Next: 3-D, surfactant transport (σ(Γ)), one fabricated-device calibration point",
-))
-story += [PageBreak()]
-
-# S14 conclusions
-story += slide("Conclusions", bullets(
-    "Built &amp; validated a two-phase LBM solver from scratch (Laplace, Poiseuille, contact angle — all quantitative)",
-    "Reproduced a full break-up cycle (filling → elongation → waist detachment, L/w<sub>c</sub>=1.37) and its pressure signature",
-    "Droplet lengths are O(w<sub>c</sub>) and consistent with the Garstecki form (α ≈ 0.8) in the droplet window; Ca, λ and wettability move the window",
-    "Design rule: geometry + surface treatment set the regime; Q<sub>r</sub> is the in-use size knob",
-    f"<b>Code &amp; data:</b> <link href='{GITHUB}' color='#1b4f9c'>{GITHUB}</link> — <font face='Courier'>run_all.py</font> regenerates everything in this talk",
-    "Thank you — questions welcome!",
-))
-
 # ------------------------------------------------------------------- doc --
-doc = BaseDocTemplate(OUT, pagesize=A4,
-                      leftMargin=1.6 * cm, rightMargin=1.6 * cm,
-                      topMargin=1.5 * cm, bottomMargin=1.7 * cm,
-                      title="CLL 770 Final Project — LBM Droplet Formation in a T-Junction",
-                      author="Ananyaa Agrawal, Yash Balram Sakhare, Rishita Anand")
-frame_report = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="report")
-frame_slide = Frame(0.55 * inch, 0.55 * inch, SLIDE_W - 1.1 * inch,
-                    SLIDE_H - 1.55 * inch, id="slide")
-frame_slide_title = Frame(0.7 * inch, 0.6 * inch, SLIDE_W - 1.4 * inch,
-                          SLIDE_H - 1.2 * inch, id="slide_title")
-doc.addPageTemplates([
-    PageTemplate(id="report", frames=[frame_report], onPage=report_footer, pagesize=A4),
-    PageTemplate(id="slides_title", frames=[frame_slide_title], onPage=slide_title_bg,
-                 pagesize=(SLIDE_W, SLIDE_H)),
-    PageTemplate(id="slides", frames=[frame_slide], onPage=slide_bg,
-                 pagesize=(SLIDE_W, SLIDE_H)),
-])
-os.makedirs(os.path.dirname(OUT), exist_ok=True)
-doc.build(story)
-print("Built", OUT)
+AUTHORS = ", ".join(name for name, _ in TEAM)
+DOC_TITLE = "CLL 770 Final Project — LBM Droplet Formation in a T-Junction"
+
+
+def build_report():
+    doc = BaseDocTemplate(REPORT, pagesize=A4,
+                          leftMargin=1.6 * cm, rightMargin=1.6 * cm,
+                          topMargin=1.5 * cm, bottomMargin=1.7 * cm,
+                          title=DOC_TITLE, author=AUTHORS)
+    frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="report")
+    doc.addPageTemplates([PageTemplate(id="report", frames=[frame],
+                                       onPage=report_footer, pagesize=A4)])
+    os.makedirs(os.path.dirname(REPORT), exist_ok=True)
+    doc.build(story)
+
+
+def merge(report_pdf, slides_pdf, out):
+    combined = fitz.open()
+    with fitz.open(report_pdf) as rep, fitz.open(slides_pdf) as sl:
+        n_rep = rep.page_count
+        combined.insert_pdf(rep)
+        combined.insert_pdf(sl)
+        n_sl = sl.page_count
+    combined.set_toc([[1, "Part I — Final project report", 1],
+                      [1, "Part II — Presentation slides", n_rep + 1]])
+    combined.set_metadata({"title": DOC_TITLE, "author": AUTHORS,
+                           "subject": "CLL 770 — Introduction to Microfluidics and Fabrication, IIT Delhi"})
+    combined.save(out, garbage=4, deflate=True)
+    combined.close()
+    return n_rep, n_sl
+
+
+if __name__ == "__main__":
+    build_report()
+    build_slides.build()
+    n_rep, n_sl = merge(REPORT, build_slides.PDF, OUT)
+    os.remove(REPORT)
+    print(f"Built {OUT}  (report {n_rep} pages + slides {n_sl} pages)")

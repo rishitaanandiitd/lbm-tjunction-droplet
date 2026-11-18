@@ -378,11 +378,13 @@ def regime_figure(sigma, rows):
     axes[0].set_xlabel("Ca"); axes[0].set_ylabel(r"$L/w_c$")
     axes[0].set_title("(a) Droplet length vs Ca ($Q_r$=0.5)")
     axes[0].legend()
-    # (b) Garstecki plot: L/wc vs Qr (Ca series point Qr=0.5 added from hero/Ca)
+    # (b) Garstecki plot at the fixed Ca of the Qr series: L/wc vs Qr, plus the
+    #     Qr = 0.5 point of the Ca series run at that same Uc
+    uc_fixed = float(qr_rows[0][1])
     all_q = []
-    for r in rows:
-        if float(r[8]) > 0 and r[0] in ("Qr", "Ca") and abs(float(r[3]) - 0.5) < 1e-9 and r[0] == "Ca":
-            all_q.append((0.5, float(r[8])))
+    for r in ca_rows:
+        if float(r[8]) > 0 and abs(float(r[1]) - uc_fixed) < 1e-9:
+            all_q.append((float(r[3]), float(r[8])))
     for r in qr_rows:
         if float(r[8]) > 0:
             all_q.append((float(r[3]), float(r[8])))
@@ -399,7 +401,7 @@ def regime_figure(sigma, rows):
                      label="Garstecki, $\\alpha$=1")
         axes[1].legend()
     axes[1].set_xlabel(r"$Q_r=Q_d/Q_c$"); axes[1].set_ylabel(r"$L/w_c$")
-    axes[1].set_title("(b) Garstecki scaling (Ca≈0.012)")
+    axes[1].set_title(f"(b) Garstecki scaling (Ca={float(qr_rows[0][2]):.3f})")
     # (c) regime map Ca vs Qr
     for r in rows:
         if r[0] not in ("Ca", "Qr"):

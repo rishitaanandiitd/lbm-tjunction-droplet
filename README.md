@@ -11,9 +11,9 @@ IIT Delhi
 
 **GitHub repository:** https://github.com/rishitaanandiitd/lbm-tjunction-droplet
 
-> Note: if this link does not resolve yet, the repository has not been
-> pushed from the authors' machine — the complete, self-contained code
-> is in this folder and runs without the remote.
+**Submission:** [`output/CLL770_Final_Report_and_Slides.pdf`](output/CLL770_Final_Report_and_Slides.pdf)
+(report + slides in one PDF). The slides on their own, editable with speaker
+notes: [`output/CLL770_Presentation.pptx`](output/CLL770_Presentation.pptx).
 
 ## What this is
 
@@ -37,9 +37,14 @@ formation at a microfluidic T-junction:
 
 ```bash
 pip install -r requirements.txt
-python3 run_all.py        # regenerates every figure + CSV (~10 min)
-python3 build_pdf.py      # builds output/CLL770_Final_Report_and_Slides.pdf
+python3 run_all.py              # regenerates every figure + CSV (~10 min)
+python3 make_slide_figures.py   # presentation-styled figures (~1 min)
+python3 build_pdf.py            # report + slides -> output/CLL770_Final_Report_and_Slides.pdf
 ```
+
+`build_pdf.py` also writes the deck (`output/CLL770_Presentation.pptx` and
+`.pdf`) via `build_slides.py`; exporting the deck to PDF needs LibreOffice
+(`soffice`) on the PATH or in `/Applications`.
 
 Quick single case:
 
@@ -56,16 +61,20 @@ print(out["phi"].shape, out["pressure"][:3])
 ```
 lbm_tjunction/solver.py   # the solver (all physics, Numba kernels)
 run_all.py                # validations + T-junction sweeps -> figures/CSVs
+make_slide_figures.py     # slide-styled figures -> results/slides/
+build_slides.py           # 16-slide deck -> output/CLL770_Presentation.pptx/.pdf
 build_pdf.py              # report + slides -> one combined PDF
-results/figures/          # generated figures (used in the PDF)
-results/data/             # generated CSVs, summary.txt, hero snapshots
-output/                   # the final combined PDF
+project_meta.py           # title, team, GitHub link shared by all of the above
+results/figures/          # generated figures (used in the report)
+results/slides/           # generated figures (used in the slides)
+results/data/             # generated CSVs, summary.txt, cached fields
+output/                   # the combined PDF and the slide deck
 ```
 
 ## Dimensionless groups
 
 `Ca = mu_c Uc / sigma`, `Qr = Qd/Qc`, `lambda = mu_d/mu_c`, `L/wc`.
-`sigma = 0.0126 lu` is **measured** in the Laplace test
+`sigma = 0.0119 lu` is **measured** in the Laplace test
 (`results/data/laplace.csv`), not assumed.
 
 ## Limitations (also in the report)
